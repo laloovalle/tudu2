@@ -1,0 +1,7 @@
+{
+  "name": "Copy of TuDú EO2",
+  "description": "An intelligent voice-controlled task manager that interprets spoken commands into structured data using Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
