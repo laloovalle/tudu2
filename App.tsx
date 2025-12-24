@@ -184,12 +184,34 @@ const App: React.FC = () => {
   const getVisibleTasks = () => {
      if (!currentUser) return [];
      if (currentUser.role === 'admin') return tasks;
+
+     const allowedIds = new Set(currentUser.visibleUserIds || []);
+     const findUserByName = (name?: string) => {
+         if (!name) return null;
+         const normalized = name.trim().toLowerCase();
+         return users.find(u => u.name.trim().toLowerCase() === normalized) || null;
+     };
+
      return tasks.filter(t => {
         const isResponsible = t.people.responsible === currentUser.name;
         const isCollaborator = t.people.collaborators && t.people.collaborators.includes(currentUser.name);
         const isCreator = t.people.creator === currentUser.name;
         const isSupervisor = t.people.supervisor === currentUser.name; 
-        return isResponsible || isCollaborator || isCreator || isSupervisor;
+
+        if (isResponsible || isCollaborator || isCreator || isSupervisor) {
+            return true;
+        }
+
+        if (allowedIds.size === 0) return false;
+
+        const responsibleUser = findUserByName(t.people.responsible);
+        const supervisorUser = findUserByName(t.people.supervisor);
+        const creatorUser = findUserByName(t.people.creator);
+        const collaboratorUsers = (t.people.collaborators || [])
+            .map(col => findUserByName(col))
+            .filter((u): u is User => !!u);
+
+        return [responsibleUser, supervisorUser, creatorUser, ...collaboratorUsers].some(u => u && allowedIds.has(u.id));
      });
   };
 
@@ -615,7 +637,7 @@ const App: React.FC = () => {
     if (currentView === 'directory') return <DirectoryView user={currentUser!} />;
     if (currentView === 'metrics') return <ReportsView tasks={visibleTasks} users={selectableUsers} onEdit={openEditTaskModal} />;
     if (currentView === 'planning') return <WorkloadView tasks={visibleTasks} users={selectableUsers} initialUserId={currentUser!.id} onReschedule={handleTaskReschedule} onEdit={openEditTaskModal} />;
-    if (currentView === 'kanban') return <KanbanBoard tasks={visibleTasks} users={selectableUsers} companies={companies} initialUserFilter={currentUser!.name} currentUser={currentUser} onStatusChange={handleStatusChange} onEdit={openEditTaskModal} />;
+    if (currentView === 'kanban') return <KanbanBoard tasks={visibleTasks} users={selectableUsers} companies={companies} currentUser={currentUser} onStatusChange={handleStatusChange} onEdit={openEditTaskModal} />;
     return (
       <div className="animate-in fade-in duration-300">
         <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl shadow-sm border border-slate-300 md:border-slate-200 dark:border-slate-700 mb-8 flex flex-col gap-5 task-card">
